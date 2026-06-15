@@ -9,6 +9,8 @@ class AnalysisContext:
     comments: list = field(default_factory=list)
     results: dict = field(default_factory=dict)
     sc: Any = None  # SocialCrawlClient handle (steps may cross-reference)
+    tv: Any = None        # TavilyClient handle (factcheck web search)
+    settings: Any = None  # Settings handle (env-configured knobs)
 
 
 Step = Callable[[AnalysisContext, Any], Awaitable[Any]]
