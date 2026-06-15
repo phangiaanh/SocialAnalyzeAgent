@@ -18,7 +18,11 @@ def test_env_override(monkeypatch):
 
 
 def test_tavily_defaults(monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.delenv("TAVILY_BASE_URL", raising=False)
     monkeypatch.delenv("TAVILY_SEARCH_DEPTH", raising=False)
+    monkeypatch.delenv("TAVILY_MAX_RESULTS", raising=False)
+    monkeypatch.delenv("FACTCHECK_MAX_CLAIMS", raising=False)
     s = Settings()
     assert s.tavily_api_key == ""
     assert s.tavily_base_url == "https://api.tavily.com"
@@ -29,7 +33,9 @@ def test_tavily_defaults(monkeypatch):
 
 def test_tavily_env_override(monkeypatch):
     monkeypatch.setenv("TAVILY_API_KEY", "tv-123")
+    monkeypatch.setenv("TAVILY_MAX_RESULTS", "10")
     monkeypatch.setenv("FACTCHECK_MAX_CLAIMS", "3")
     s = Settings()
     assert s.tavily_api_key == "tv-123"
+    assert s.tavily_max_results == 10
     assert s.factcheck_max_claims == 3
