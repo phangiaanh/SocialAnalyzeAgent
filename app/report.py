@@ -16,6 +16,8 @@ def _factcheck(fc: FactCheckResult | None) -> str:
         lines.append(f'• "{c.text}" — {_LABEL.get(c.label, c.label)}')
         if c.evidence:
             lines.append(f"  {c.evidence}")
+        for i, s in enumerate(c.sources[:3], 1):
+            lines.append(f"  ↳ [{i}] {s.title or s.url} — {s.url}")
     return "\n".join(lines)
 
 

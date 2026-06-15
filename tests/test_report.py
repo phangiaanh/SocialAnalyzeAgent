@@ -32,3 +32,21 @@ def test_report_degrades_missing_sections():
     text = format_report(_req(), {}, DEFAULT_PROFILE)
     assert "không thể phân tích" in text.lower()
     assert len(text) <= 4096
+
+
+def test_report_renders_claim_sources():
+    from app.schemas import Source
+    results = {
+        "factcheck": FactCheckResult(
+            claims=[Claim(text="AURORA won", label="supported", confidence="high",
+                          evidence="xác nhận bởi 2 nguồn",
+                          sources=[Source(title="VnExpress", url="https://vn/1",
+                                          snippet="won"),
+                                   Source(title="Reuters", url="https://r/2",
+                                          snippet="confirmed")])],
+            overall_confidence="high"),
+    }
+    text = format_report(_req(), results, DEFAULT_PROFILE)
+    assert "https://vn/1" in text
+    assert "VnExpress" in text
+    assert len(text) <= 4096
