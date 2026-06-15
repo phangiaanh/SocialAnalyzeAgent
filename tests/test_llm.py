@@ -16,14 +16,15 @@ def _client(handler):
     return LLMClient(Settings(), http=http)
 
 
-def _completion(content):
-    return {"choices": [{"message": {"content": content}}]}
+def _sse(content):
+    chunk = json.dumps({"choices": [{"delta": {"content": content}}]})
+    return f"data: {chunk}\n\ndata: [DONE]\n\n"
 
 
 @pytest.mark.anyio
 async def test_returns_validated_model():
     def handler(req):
-        return httpx.Response(200, json=_completion('{"n": 7}'))
+        return httpx.Response(200, text=_sse('{"n": 7}'))
     out = await _client(handler).complete_json(system="s", user="u", schema=Out)
     assert out.n == 7
 
@@ -31,7 +32,7 @@ async def test_returns_validated_model():
 @pytest.mark.anyio
 async def test_extracts_json_from_noise():
     def handler(req):
-        return httpx.Response(200, json=_completion('sure!\n{"n": 3}\nthanks'))
+        return httpx.Response(200, text=_sse('sure!\n{"n": 3}\nthanks'))
     out = await _client(handler).complete_json(system="s", user="u", schema=Out)
     assert out.n == 3
 
@@ -41,7 +42,7 @@ async def test_retries_then_raises():
     calls = {"c": 0}
     def handler(req):
         calls["c"] += 1
-        return httpx.Response(200, json=_completion("not json"))
+        return httpx.Response(200, text=_sse("not json"))
     s = Settings(llm_max_retries=2)
     with pytest.raises(LLMError):
         await LLMClient(s, http=httpx.AsyncClient(transport=httpx.MockTransport(handler))
