@@ -1,3 +1,4 @@
+import datetime
 from app.schemas import FactCheckResult, Claim, ClaimExtraction, VerificationResult
 from app.steps.base import AnalysisContext, register
 
@@ -7,9 +8,11 @@ _EXTRACT_SYSTEM = (
     'Trả về JSON dạng {{"claims": ["tuyên bố 1", "tuyên bố 2"]}}.'
 )
 _VERIFY_SYSTEM = (
+    "Hôm nay là {today}. "
     "Bạn là trợ lý kiểm chứng cho lĩnh vực {domain}. Với mỗi tuyên bố kèm các nguồn web, "
     "gán nhãn supported/disputed/unverifiable và giải thích ngắn gọn bằng tiếng Việt trong "
     "trường evidence. Nếu không có nguồn hỗ trợ, dùng unverifiable. "
+    "Lưu ý: các nguồn có ngày tháng trong năm {year} là HIỆN TẠI, không phải tương lai. "
     'Trả về JSON có mảng "verdicts" THEO ĐÚNG THỨ TỰ tuyên bố (mỗi phần tử gồm label, '
     'confidence, evidence) và "overall_confidence".'
 )
@@ -42,8 +45,13 @@ async def run(ctx: AnalysisContext, llm) -> FactCheckResult:
         sources = await ctx.tv.search(claim) if ctx.tv is not None else []
         checked.append((claim, sources))
 
+    today = datetime.date.today().isoformat()
     verification = await llm.complete_json(
-        system=_VERIFY_SYSTEM.format(domain=ctx.profile.domain_hint),
+        system=_VERIFY_SYSTEM.format(
+            domain=ctx.profile.domain_hint,
+            today=today,
+            year=today[:4],
+        ),
         user=_render_verify(checked),
         schema=VerificationResult,
     )
