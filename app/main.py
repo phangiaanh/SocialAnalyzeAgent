@@ -1,4 +1,8 @@
 # app/main.py
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s: %(message)s")
+
 import httpx
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse

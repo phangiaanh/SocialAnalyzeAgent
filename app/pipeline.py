@@ -30,9 +30,12 @@ async def run_job(req: AnalyzeRequest, *, sc, llm, tv=None, settings=None) -> No
             continue
         try:
             ctx.results[name] = await step(ctx, llm)
+            log.info("job %s step %s OK", req.job_id, name)
         except Exception as e:  # degrade: missing section
-            log.warning("step %s failed: %s", name, e)
+            log.warning("job %s step %s failed: %s", req.job_id, name, e)
     report = format_report(req, ctx.results, profile)
+    log.info("job %s report len=%d delivering to chat_id=%s", req.job_id, len(report), req.delivery.chat_id)
     payload = CallbackPayload(job_id=req.job_id, status="ok", report_text=report,
                               delivery=req.delivery)
     await deliver(payload, req.callback)
+    log.info("job %s delivered OK", req.job_id)
