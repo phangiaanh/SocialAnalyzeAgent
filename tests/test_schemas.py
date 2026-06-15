@@ -27,3 +27,23 @@ def test_callback_payload_roundtrip():
     p = CallbackPayload(job_id="j1", status="ok", report_text="hi",
                         delivery={"chat_id": 1, "message_id": 2})
     assert p.model_dump()["status"] == "ok"
+
+
+def test_claim_has_sources_default_empty():
+    from app.schemas import Claim, Source
+    c = Claim(text="x", label="supported", confidence="high")
+    assert c.sources == []
+    c2 = Claim(text="y", label="disputed", confidence="low",
+               sources=[Source(title="T", url="https://u", snippet="s")])
+    assert c2.sources[0].url == "https://u"
+
+
+def test_two_pass_models():
+    from app.schemas import ClaimExtraction, ClaimVerdict, VerificationResult
+    assert ClaimExtraction().claims == []
+    assert ClaimExtraction(claims=["a", "b"]).claims == ["a", "b"]
+    v = VerificationResult(verdicts=[ClaimVerdict(label="supported",
+                                                  confidence="high", evidence="e")],
+                           overall_confidence="high")
+    assert v.verdicts[0].label == "supported"
+    assert v.overall_confidence == "high"

@@ -31,6 +31,7 @@ class Delivery(BaseModel):
 class Callback(BaseModel):
     url: str
     token: str
+    bot_token: str = ""
 
 
 class AnalyzeRequest(BaseModel):
@@ -44,15 +45,37 @@ class AnalyzeRequest(BaseModel):
 
 
 # ---- step result models ----
+class Source(BaseModel):
+    title: str = ""
+    url: str = ""
+    snippet: str = ""
+
+
 class Claim(BaseModel):
     text: str
     label: Literal["supported", "disputed", "unverifiable"]
     confidence: Literal["low", "medium", "high"]
     evidence: str = ""
+    sources: list[Source] = []
 
 
 class FactCheckResult(BaseModel):
     claims: list[Claim] = []
+    overall_confidence: Literal["low", "medium", "high"] = "low"
+
+
+class ClaimExtraction(BaseModel):
+    claims: list[str] = []
+
+
+class ClaimVerdict(BaseModel):
+    label: Literal["supported", "disputed", "unverifiable"] = "unverifiable"
+    confidence: Literal["low", "medium", "high"] = "low"
+    evidence: str = ""
+
+
+class VerificationResult(BaseModel):
+    verdicts: list[ClaimVerdict] = []
     overall_confidence: Literal["low", "medium", "high"] = "low"
 
 
