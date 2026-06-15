@@ -28,7 +28,10 @@ class TavilyClient:
             data = resp.json()
         except (httpx.HTTPError, ValueError):
             return []
-        results = data.get("results") or []
-        return [Source(title=r.get("title") or "", url=r.get("url") or "",
-                       snippet=r.get("content") or "")
-                for r in results[: self.s.tavily_max_results]]
+        try:
+            results = data.get("results") or []
+            return [Source(title=r.get("title") or "", url=r.get("url") or "",
+                           snippet=r.get("content") or "")
+                    for r in results[: self.s.tavily_max_results] if isinstance(r, dict)]
+        except Exception:
+            return []

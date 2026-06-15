@@ -23,21 +23,40 @@ class LLMClient:
         self.s = settings
         self._http = http or httpx.AsyncClient(timeout=settings.llm_timeout)
 
+    async def _stream_chat(self, messages: list, temperature: float) -> str:
+        chunks: list[str] = []
+        async with self._http.stream(
+            "POST",
+            f"{self.s.llm_base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {self.s.llm_api_key}"},
+            json={"model": self.s.llm_model, "messages": messages,
+                  "temperature": temperature,
+                  "response_format": {"type": "json_object"},
+                  "stream": True},
+            timeout=self.s.llm_timeout,
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                payload = line[5:].strip()
+                if payload == "[DONE]":
+                    break
+                data = json.loads(payload)
+                choices = data.get("choices")
+                if not choices:
+                    continue
+                delta = choices[0].get("delta", {})
+                chunks.append(delta.get("content") or "")
+        return "".join(chunks)
+
     async def complete_json(self, *, system: str, user: str,
                             schema: type[BaseModel], temperature: float = 0.2) -> BaseModel:
         messages = [{"role": "system", "content": system},
                     {"role": "user", "content": user}]
         last = None
         for _ in range(self.s.llm_max_retries):
-            resp = await self._http.post(
-                f"{self.s.llm_base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.s.llm_api_key}"},
-                json={"model": self.s.llm_model, "messages": messages,
-                      "temperature": temperature,
-                      "response_format": {"type": "json_object"}},
-            )
-            resp.raise_for_status()
-            raw = resp.json()["choices"][0]["message"]["content"]
+            raw = await self._stream_chat(messages, temperature)
             try:
                 return schema.model_validate_json(_extract_json(raw))
             except (ValueError, ValidationError) as e:
