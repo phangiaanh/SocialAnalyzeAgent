@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     socialcrawl_api_key: str = ""
     socialcrawl_base_url: str = "https://www.socialcrawl.dev/v1"
 
+    tavily_api_key: str = ""
+    tavily_base_url: str = "https://api.tavily.com"
+    tavily_search_depth: str = "basic"
+    tavily_max_results: int = 5
+    factcheck_max_claims: int = 5
+
     request_timeout: float = 15.0
 
 

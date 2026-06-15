@@ -15,3 +15,21 @@ def test_env_override(monkeypatch):
     s = Settings()
     assert s.llm_model == "qwen/other"
     assert s.socialcrawl_api_key == "k123"
+
+
+def test_tavily_defaults(monkeypatch):
+    monkeypatch.delenv("TAVILY_SEARCH_DEPTH", raising=False)
+    s = Settings()
+    assert s.tavily_api_key == ""
+    assert s.tavily_base_url == "https://api.tavily.com"
+    assert s.tavily_search_depth == "basic"
+    assert s.tavily_max_results == 5
+    assert s.factcheck_max_claims == 5
+
+
+def test_tavily_env_override(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "tv-123")
+    monkeypatch.setenv("FACTCHECK_MAX_CLAIMS", "3")
+    s = Settings()
+    assert s.tavily_api_key == "tv-123"
+    assert s.factcheck_max_claims == 3
