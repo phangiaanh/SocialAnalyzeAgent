@@ -55,3 +55,25 @@ async def test_run_job_reports_error_on_failure(monkeypatch):
     # comments degrade to empty, steps degrade individually -> still ok with N/A sections
     assert captured["payload"].status == "ok"
     assert "không thể phân tích" in captured["payload"].report_text.lower()
+
+
+@pytest.mark.anyio
+async def test_run_job_threads_tv_and_settings_into_context(monkeypatch):
+    seen = {}
+
+    async def fake_deliver(payload, callback, **kw):
+        seen["payload"] = payload
+
+    async def spy_step(ctx, llm):
+        seen["tv"] = ctx.tv
+        seen["settings"] = ctx.settings
+        from app.schemas import FactCheckResult
+        return FactCheckResult()
+
+    monkeypatch.setattr(pipeline, "deliver", fake_deliver)
+    pipeline.STEP_REGISTRY["factcheck"] = spy_step  # override for this test
+
+    req = AnalyzeRequest.model_validate(SAMPLE)
+    await pipeline.run_job(req, sc=FakeSC(), llm=FakeLLM(), tv="TV", settings="SET")
+    assert seen["tv"] == "TV"
+    assert seen["settings"] == "SET"

@@ -19,10 +19,11 @@ async def _gather_comments(sc, req, profile):
         return []
 
 
-async def run_job(req: AnalyzeRequest, *, sc, llm) -> None:
+async def run_job(req: AnalyzeRequest, *, sc, llm, tv=None, settings=None) -> None:
     profile = resolve_profile(req.mode.id)
     comments = await _gather_comments(sc, req, profile)
-    ctx = AnalysisContext(request=req, profile=profile, comments=comments, results={}, sc=sc)
+    ctx = AnalysisContext(request=req, profile=profile, comments=comments, results={},
+                          sc=sc, tv=tv, settings=settings)
     for name in profile.steps:
         step = STEP_REGISTRY.get(name)
         if not step:
