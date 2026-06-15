@@ -27,3 +27,26 @@ async def test_fetch_comments_unsupported_platform_returns_empty():
     out = await _client(lambda r: httpx.Response(200)).fetch_comments(
         "myspace", "p1", "u", limit=10)
     assert out == []
+
+
+@pytest.mark.anyio
+async def test_fetch_comments_sorted_by_likes_desc():
+    def handler(req):
+        return httpx.Response(200, json={"success": True, "data": {"items": [
+            {"id": "a", "text": "low", "author": {"username": "u"}, "likes": 1},
+            {"id": "b", "text": "high", "author": {"username": "u"}, "likes": 99},
+            {"id": "c", "text": "mid", "author": {"username": "u"}, "likes": 50},
+        ]}})
+    out = await _client(handler).fetch_comments("tiktok", "p1", "https://t/p1", limit=10)
+    assert [c.text for c in out] == ["high", "mid", "low"]
+
+
+@pytest.mark.anyio
+async def test_fetch_comments_sort_then_truncate():
+    def handler(req):
+        return httpx.Response(200, json={"success": True, "data": {"items": [
+            {"id": "a", "text": "low", "likes": 1},
+            {"id": "b", "text": "high", "likes": 99},
+        ]}})
+    out = await _client(handler).fetch_comments("tiktok", "p1", "u", limit=1)
+    assert [c.text for c in out] == ["high"]   # top-liked survives truncation

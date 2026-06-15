@@ -14,19 +14,20 @@ class Comment(BaseModel):
     likes: int = 0
 
 
-# Confirm exact paths against the live SocialCrawl reference (spec open item #1).
 _COMMENT_PATHS = {
-    "tiktok": "/tiktok/comments",
-    "reddit": "/reddit/comments",
-    "threads": "/threads/comments",
+    "tiktok": "/tiktok/post/comments",
+    "reddit": "/reddit/post/comments",
+    # threads has no comments endpoint
 }
 
 
 def _normalize(item: dict) -> Comment:
-    text = item.get("text") or (item.get("content") or {}).get("text", "") or ""
-    author = (item.get("author") or {}).get("username", "") or ""
-    return Comment(id=str(item.get("id", "")), text=text, author=author,
-                   likes=int(item.get("likes") or 0))
+    # Response wraps each entry as {"comment": {...}}
+    c = item.get("comment") or item
+    text = c.get("text") or (c.get("content") or {}).get("text") or ""
+    author = (c.get("author") or {}).get("username", "") or ""
+    likes = int((c.get("engagement") or {}).get("likes") or c.get("likes") or 0)
+    return Comment(id=str(c.get("id", "")), text=text, author=author, likes=likes)
 
 
 class SocialCrawlClient:
@@ -41,7 +42,7 @@ class SocialCrawlClient:
             return []
         resp = await self._http.get(
             f"{self.s.socialcrawl_base_url}{path}",
-            params={"post_id": post_id, "url": url, "limit": limit},
+            params={"url": url},
             headers={"x-api-key": self.s.socialcrawl_api_key, "Accept": "application/json"},
         )
         if resp.status_code != 200:
@@ -49,8 +50,10 @@ class SocialCrawlClient:
         env = resp.json()
         if not env.get("success", False):
             raise SocialCrawlError(f"api error: {env.get('error') or env}")
-        items = (env.get("data") or {}).get("items") or (env.get("data") or {}).get("results") or []
-        return [_normalize(i) for i in items][:limit]
+        items = (env.get("data") or {}).get("items") or []
+        comments = sorted((_normalize(i) for i in items),
+                          key=lambda c: c.likes, reverse=True)
+        return comments[:limit]
 
     async def cross_reference(self, query: str, limit: int = 10) -> list[str]:
         """Texts of other posts matching a claim, for fact-check signal."""
