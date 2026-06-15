@@ -55,8 +55,13 @@ class LLMClient:
         messages = [{"role": "system", "content": system},
                     {"role": "user", "content": user}]
         last = None
-        for _ in range(self.s.llm_max_retries):
-            raw = await self._stream_chat(messages, temperature)
+        for attempt in range(self.s.llm_max_retries):
+            try:
+                raw = await self._stream_chat(messages, temperature)
+            except (httpx.RemoteProtocolError, httpx.ReadError,
+                    httpx.ConnectError, httpx.TimeoutException) as e:
+                last = e
+                continue  # retry on transient network error
             try:
                 return schema.model_validate_json(_extract_json(raw))
             except (ValueError, ValidationError) as e:
@@ -67,4 +72,4 @@ class LLMClient:
                      "content": "Trả về DUY NHẤT một JSON hợp lệ theo schema "
                                 f"{json.dumps(schema.model_json_schema())}. Lỗi: {e}"},
                 ]
-        raise LLMError(f"LLM failed schema after {self.s.llm_max_retries} tries: {last}")
+        raise LLMError(f"LLM failed after {self.s.llm_max_retries} tries: {last}")
